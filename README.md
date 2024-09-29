@@ -9,60 +9,7 @@ Automated Testing: Pre-configured test suite using pytest and other testing tool
 Mocking and Dependency Injection: Simulate external APIs, services, and data sources to isolate the code under test.
 Docker Support: Dockerfile included to ensure consistent environments across different machines.
 Continuous Integration: Pre-configured GitHub Actions workflow to automate testing, linting, and code quality checks.
-Repository Structure
-markdown
-Copy code
-unitflo-evaluation-project/
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-├── .gitignore
-├── .pre-commit-config.yaml
-├── CONTRIBUTING.md
-├── Dockerfile
-├── LICENSE
-├── README.md
-├── requirements.txt
-├── setup.cfg
-├── src/
-│   ├── __init__.py
-│   ├── api_client.py
-│   ├── config/
-│   │   ├── __init__.py
-│   │   └── settings.py
-│   ├── data/
-│   │   ├── __init__.py
-│   │   └── data_source.py
-│   ├── data_processor.py
-│   ├── exceptions.py
-│   ├── model.py
-│   ├── services/
-│   │   ├── __init__.py
-│   │   ├── service_a.py
-│   │   └── service_b.py
-│   ├── utilities.py
-│   └── validations.py
-├── tests/
-│   ├── __init__.py
-│   ├── test_api_client.py
-│   ├── test_data_processor.py
-│   ├── test_model.py
-│   ├── test_services.py
-│   ├── test_utilities.py
-│   └── test_validations.py
-├── tests_evaluation/
-│   ├── __init__.py
-│   └── test_evaluate_tests.py
-├── edge_cases/
-│   └── jira_edge_cases.json
-├── embeddings/
-│   └── code_embeddings.json
-├── evaluate_tests.py
-├── config_evaluation.yml
-└── utils/
-    ├── __init__.py
-    ├── llm_utils.py
-    └── logger.py
+
 Setup Instructions
 1. Clone the Repository
 bash
