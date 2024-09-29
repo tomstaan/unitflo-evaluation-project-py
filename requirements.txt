@@ -1,0 +1,15 @@
+pandas
+numpy
+requests
+coverage
+mutmut
+pytest
+pytest-cov
+flake8
+pylint
+radon
+flake8-duplicates
+openai
+hypothesis
+bandit
+pre-commit

@@ -1,0 +1,42 @@
+[
+    {
+        "id": "EDGE-301",
+        "description": "Handle data sources returning empty datasets."
+    },
+    {
+        "id": "EDGE-302",
+        "description": "Process data with missing 'enriched' column in ServiceB."
+    },
+    {
+        "id": "EDGE-303",
+        "description": "APIClient should handle unexpected HTTP status codes."
+    },
+    {
+        "id": "EDGE-304",
+        "description": "Model prediction with input data containing NaN values."
+    },
+    {
+        "id": "EDGE-305",
+        "description": "Utilities should process unknown data types gracefully."
+    },
+    {
+        "id": "EDGE-306",
+        "description": "DataProcessor should handle DataFrame with only NaN values."
+    },
+    {
+        "id": "EDGE-307",
+        "description": "Validate proper exception handling when external API is down."
+    },
+    {
+        "id": "EDGE-308",
+        "description": "ServiceA should handle division by zero errors."
+    },
+    {
+        "id": "EDGE-309",
+        "description": "DataSource should raise an error for unsupported file formats."
+    },
+    {
+        "id": "EDGE-310",
+        "description": "Model should handle input data with extreme values without crashing."
+    }
+]

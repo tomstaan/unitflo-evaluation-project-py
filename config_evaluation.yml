@@ -1,0 +1,19 @@
+# config_evaluation.yml
+weights:
+  CCS: 0.30
+  TCS: 0.25
+  ECHS: 0.20
+  TQS: 0.10
+  EHS: 0.05
+  DRS: 0.05
+  ESR: 0.05
+
+flake8:
+  ignore:
+    - E501  # Ignore line length
+
+tqs:
+  max_allowable_issues: 100
+
+ehs:
+  total_exceptions_in_code: 5

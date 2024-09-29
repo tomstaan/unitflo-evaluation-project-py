@@ -1,0 +1,40 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+
+# Environments
+.env
+*.env
+
+# VS Code settings
+.vscode/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Pytest cache
+.cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+
+# Logs
+logs/
+*.log
+
+# Reports
+evaluation_report.json
+
+# Docker
+*.dockerfile
+
+# Misc
+.DS_Store
