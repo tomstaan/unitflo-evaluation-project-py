@@ -13,18 +13,31 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.8, 3.9]  # You can add other versions as necessary
+        python-version: [3.8, 3.9]  # You can add other versions if necessary
 
     steps:
     - uses: actions/checkout@v2
 
     # Set up Git to use GITHUB_TOKEN for fetching the repositories
-    - name: Set up Git credentials for fetching pre-commit hooks
+    - name: Set up Git to use GITHUB_TOKEN for pre-commit
       run: |
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git config --global user.name "GitHub Actions"
+        git config --global credential.helper store
+        git config --global url."https://github.com/".insteadOf "git@github.com:"
         git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
     
+    # Optionally: Set up SSH as a fallback for Git operations
+    # Uncomment the lines below if you want to use SSH instead of HTTPS
+    # - name: Set up SSH
+    #   uses: webfactory/ssh-agent@v0.5.3
+    #   with:
+    #     ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    # - name: Configure Git to use SSH
+    #   run: |
+    #     git config --global url."git@github.com:".insteadOf "https://github.com/"
+
     # Cache Pre-Commit Environments to avoid repeated setup
     - name: Cache Pre-Commit Environments
       uses: actions/cache@v2
@@ -44,11 +57,17 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    # Install Pre-Commit and Run Hooks
     - name: Install Pre-Commit and Run Hooks
       run: |
         pre-commit install
         pre-commit run --all-files
+
+    # Debugging step: Display Pre-Commit log on failure
+    - name: Display Pre-Commit Log (on failure)
+      if: failure()
+      run: |
+        echo "Displaying pre-commit log..."
+        cat /home/runner/.cache/pre-commit/pre-commit.log
 
     - name: Run Tests
       run: |
