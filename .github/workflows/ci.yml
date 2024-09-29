@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
@@ -13,25 +13,41 @@ jobs:
       matrix:
         python-version: [3.8, 3.9]
 
+    # Using a custom Docker container with an updated libcrypto version
+    container:
+      image: ubuntu:20.04  # Use Ubuntu 20.04 to ensure compatibility with libcrypto
+
     steps:
+    # Step 1: Checkout the repository
     - uses: actions/checkout@v3
 
-    # Write the SSH key to the ~/.ssh directory and set correct permissions
+    # Step 2: Install OpenSSL and SSH client to ensure the correct version of libcrypto
+    - name: Install Dependencies
+      run: |
+        apt-get update
+        apt-get install -y openssl openssh-client
+
+    # Step 3: Write the SSH private key to the ~/.ssh directory and set correct permissions
     - name: Write SSH Key
       run: |
         mkdir -p ~/.ssh
         echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-        cat ~/.ssh/id_ed25519  # Debugging: Show the SSH key content (remove later)
         chmod 600 ~/.ssh/id_ed25519
-        ls -la ~/.ssh  # Debugging: List files in ~/.ssh to verify the key was written correctly
+        ls -la ~/.ssh  # Debugging: List files in ~/.ssh to verify
 
-    # Add the SSH key to the ssh-agent and debug
+    # Step 4: Add the SSH key to the ssh-agent and check if the key is loaded properly
     - name: Add SSH Key to Agent
       run: |
         eval "$(ssh-agent -s)"
         ssh-add ~/.ssh/id_ed25519
-        ssh-add -l  # Debugging: List identities to confirm the key was added successfully
+        ssh-add -l  # List loaded keys to confirm the SSH key was added
 
+    # Step 5: Verify SSH key (optional, remove after debugging)
+    - name: Verify SSH Key
+      run: |
+        ssh-keygen -y -f ~/.ssh/id_ed25519  # Check if the key can generate the public key
+
+    # Step 6: Cache Pre-Commit Environments to avoid repeated setup
     - name: Cache Pre-Commit Environments
       uses: actions/cache@v2
       with:
@@ -40,43 +56,44 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pre-commit-
 
-    # Set up Python environment
+    # Step 7: Set up Python environment
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
 
-    # Install dependencies
+    # Step 8: Install dependencies
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    # Install Pre-Commit and Run Hooks
+    # Step 9: Install Pre-Commit and run hooks
     - name: Install Pre-Commit and Run Hooks
       run: |
         pre-commit install
         pre-commit run --all-files
 
-    # Debugging step: Display Pre-Commit log on failure
+    # Step 10: Debugging step: Display Pre-Commit log on failure
     - name: Display Pre-Commit Log (on failure)
       if: failure()
       run: |
+        echo "Displaying pre-commit log..."
         cat precommit_debug.log || echo "No pre-commit log found"
 
-    # Run unit tests
+    # Step 11: Run unit tests
     - name: Run Tests
       run: |
         pytest tests/ --disable-warnings
 
-    # Run coverage report
+    # Step 12: Run coverage report
     - name: Run Coverage
       run: |
         coverage run -m pytest
         coverage report
 
-    # Analyze code complexity using Radon
+    # Step 13: Analyze code complexity using Radon
     - name: Analyze Code Complexity (Radon)
       run: |
-        radon cc src/ -s -n C
-        radon mi src/
+        radon cc src/ -s -n C  # Check cyclomatic complexity for grades A, B, C
+        radon mi src/  # Measure maintainability index
