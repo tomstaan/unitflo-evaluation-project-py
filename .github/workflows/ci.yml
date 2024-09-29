@@ -24,9 +24,16 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: Configure Git to use SSH
+    - name: Set Permissions for SSH Key
       run: |
-        git config --global url."git@github.com:".insteadOf "https://github.com/"
+        chmod 600 ~/.ssh/id_rsa
+
+    # Manually check SSH key to debug
+    - name: Check SSH Key Manually
+      run: |
+        ssh-add -l
+        ssh-add ~/.ssh/id_rsa
+        echo "Key check completed"
 
     # Cache Pre-Commit Environments to avoid repeated setup
     - name: Cache Pre-Commit Environments
@@ -47,13 +54,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    # Force pre-commit verbose logging and use an explicit log path
-    - name: Install Pre-Commit and Run Hooks with Verbose Logging
+    - name: Install Pre-Commit and Run Hooks
       run: |
         pre-commit install
-        pre-commit run --all-files -v > precommit_debug.log || (cat precommit_debug.log && exit 1)
+        pre-commit run --all-files
 
-    # Debugging step: Display Pre-Commit Log if the run fails
+    # Debugging step: Display Pre-Commit log on failure
     - name: Display Pre-Commit Log (on failure)
       if: failure()
       run: |
@@ -73,4 +79,3 @@ jobs:
       run: |
         radon cc src/ -s -n C  # Check cyclomatic complexity for grades A, B, C
         radon mi src/  # Measure maintainability index
-
