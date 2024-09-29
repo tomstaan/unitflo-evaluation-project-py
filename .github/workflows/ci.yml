@@ -18,18 +18,16 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    # Set up Git to use GITHUB_TOKEN for fetching the repositories (Forcefully apply GITHUB_TOKEN)
-    - name: Force Git to Use GITHUB_TOKEN for pre-commit
-      run: |
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git config --global user.name "GitHub Actions"
-        git config --global credential.helper cache
-        git config --global url."https://github.com/".insteadOf "git@github.com:"
-        git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-        # Ensure that Git uses the token for all future requests
-        echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" > ~/.git-credentials
-        git config --global credential.helper store
+    # Set up SSH to avoid HTTPS GitHub Authentication Issues
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+    - name: Configure Git to use SSH
+      run: |
+        git config --global url."git@github.com:".insteadOf "https://github.com/"
+    
     # Cache Pre-Commit Environments to avoid repeated setup
     - name: Cache Pre-Commit Environments
       uses: actions/cache@v2
@@ -49,10 +47,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    # Install Pre-Commit Hooks and Forcefully Reinitialize Environments
-    - name: Install Pre-Commit and Reinitialize Environments
+    - name: Install Pre-Commit and Run Hooks
       run: |
-        pre-commit clean
         pre-commit install
         pre-commit run --all-files
 
