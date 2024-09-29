@@ -14,24 +14,30 @@ jobs:
         python-version: [3.8, 3.9]
 
     steps:
-    # Checkout the code
-    - name: Checkout code
+    # Checkout the code using GITHUB_TOKEN for authentication
+    - name: Checkout code with GITHUB_TOKEN
       uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}  # Using the default GitHub token
 
-    # Debug current directory and list files
+    # Debugging: show current directory and list files
     - name: Show current directory and list files
       run: |
         echo "Current directory: $(pwd)"
         ls -la
 
-    # Set up Git to use Personal Access Token (PAT) for HTTPS authentication
-    - name: Set up Git to use PAT
+    # Install Pre-Commit and Run Hooks with GITHUB_TOKEN
+    - name: Install Pre-Commit and Run Hooks
       run: |
-        git config --global url."https://${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
-        git config --global user.email "your-email@example.com"
-        git config --global user.name "your-github-username"
+        echo "Running pre-commit installation."
+        git config --global url."https://github.com/".insteadOf "git@github.com:"  # Ensure pre-commit uses HTTPS
+        git config --global credential.helper cache  # Cache credentials for subsequent fetches
+        git config --global --unset credential.helper  # Clear credential helper to use token
+        pre-commit install
+        echo "Running pre-commit hooks."
+        GIT_CURL_VERBOSE=1 GIT_TRACE=1 GIT_ASKPASS=echo pre-commit run --all-files  # Enable detailed Git tracing
       env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}  # Your PAT token should be stored in GitHub Secrets
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Use GitHub token for authentication
 
     # Cache Pre-Commit Environments to avoid repeated setup
     - name: Cache Pre-Commit Environments
@@ -55,20 +61,12 @@ jobs:
         pip install -r requirements.txt
         pip freeze  # Show installed packages
 
-    # Install Pre-Commit and Run Hooks with PAT
-    - name: Install Pre-Commit and Run Hooks
-      run: |
-        echo "Running pre-commit installation."
-        pre-commit install
-        echo "Running pre-commit hooks."
-        pre-commit run --all-files
-
     # Run unit tests
     - name: Run Tests
       run: |
         pytest tests/ --disable-warnings
 
-    # Run Coverage report
+    # Run coverage report
     - name: Run Coverage
       run: |
         coverage run -m pytest
