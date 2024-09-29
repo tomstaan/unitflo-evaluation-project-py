@@ -24,15 +24,16 @@ jobs:
         mkdir -p ~/.ssh
         echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
-        ls -la ~/.ssh  # Debug: List files in ~/.ssh to verify
+        ls -la ~/.ssh  # Debug: List files in ~/.ssh to verify (can be removed after debugging)
 
     # Add the SSH key to the ssh-agent (switch to ed25519)
     - name: Add SSH Key to Agent
       run: |
         eval "$(ssh-agent -s)"
-        ssh-add ~/.ssh/id_ed25519  # Update to use id_ed25519
+        ssh-add ~/.ssh/id_ed25519
+        ssh-add -l  # List identities to confirm the key was added successfully
 
-    # Debugging step to verify the key
+    # Debugging step to verify the key (can be removed after confirming)
     - name: Verify SSH Key
       run: |
         ssh-keygen -yf ~/.ssh/id_ed25519  # Verify if key is valid and generates a public key
@@ -64,12 +65,12 @@ jobs:
         pre-commit install
         pre-commit run --all-files
 
-    # Debugging step: Display Pre-Commit log on failure
+    # Debugging step: Display Pre-Commit log on failure (ensure logs are created)
     - name: Display Pre-Commit Log (on failure)
       if: failure()
       run: |
         echo "Displaying pre-commit log..."
-        cat precommit_debug.log
+        cat precommit_debug.log || echo "No pre-commit log found"  # Avoid error if no log
 
     # Run unit tests
     - name: Run Tests
