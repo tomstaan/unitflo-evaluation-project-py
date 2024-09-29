@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
@@ -14,34 +14,11 @@ jobs:
         python-version: [3.8, 3.9]
 
     steps:
-    # Debugging: Show available environment variables and runner information
-    - name: Show environment info
-      run: |
-        echo "Environment variables:"
-        printenv
-        echo "Runner details:"
-        uname -a
-
-    # Checkout the code using GITHUB_TOKEN for authentication
-    - name: Checkout code with GITHUB_TOKEN
+    # Checkout code using GITHUB_TOKEN
+    - name: Checkout code
       uses: actions/checkout@v3
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}  # Using the default GitHub token
-
-    # Debugging: Verify the working directory and list files
-    - name: Show current directory and list files
-      run: |
-        echo "Current directory: $(pwd)"
-        ls -la
-
-    # Cache Pre-Commit Environments to avoid repeated setup
-    - name: Cache Pre-Commit Environments
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/pre-commit
-        key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-pre-commit-
+        token: ${{ secrets.GITHUB_TOKEN }}
 
     # Set up Python environment
     - name: Set up Python
@@ -49,37 +26,30 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    # Debugging: Show Python version and environment
-    - name: Show Python version
-      run: |
-        python --version
-        pip --version
-
     # Install dependencies
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    # Debugging: Show installed dependencies
-    - name: Show installed dependencies
-      run: pip freeze
+    # Configure Git to use HTTPS with a Personal Access Token for pre-commit
+    - name: Configure Git for HTTPS with PAT
+      run: |
+        git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    # Install Pre-Commit and Run Hooks with debugging enabled
+    # Run pre-commit hooks
     - name: Install Pre-Commit and Run Hooks
       run: |
         echo "Running pre-commit installation."
-        git config --global url."https://github.com/".insteadOf "git@github.com:"  # Ensure pre-commit uses HTTPS
         pre-commit install
         echo "Running pre-commit hooks."
-        GIT_TRACE=1 GIT_CURL_VERBOSE=1 pre-commit run --all-files
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Use GitHub token for authentication
+        pre-commit run --all-files
 
     # Run unit tests
     - name: Run Tests
-      run: |
-        pytest tests/ --disable-warnings
+      run: pytest tests/ --disable-warnings
 
     # Run coverage report
     - name: Run Coverage
