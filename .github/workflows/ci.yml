@@ -13,32 +13,29 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.8, 3.9]  # You can add other versions if necessary
+        python-version: [3.8, 3.9]
 
     steps:
-    - uses: actions/checkout@v3  # Updated to v3 to fix Node.js version warning
+    - uses: actions/checkout@v3
 
-    # Write the SSH private key to the ~/.ssh directory and set correct permissions
     - name: Write SSH Key
       run: |
         mkdir -p ~/.ssh
         echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
-        ls -la ~/.ssh  # Debug: List files in ~/.ssh to verify (can be removed after debugging)
+        ls -la ~/.ssh
 
-    # Add the SSH key to the ssh-agent (switch to ed25519)
     - name: Add SSH Key to Agent
       run: |
         eval "$(ssh-agent -s)"
         ssh-add ~/.ssh/id_ed25519
-        ssh-add -l  # List identities to confirm the key was added successfully
+        ssh-add -l
 
-    # Debugging step to verify the key (can be removed after confirming)
-    - name: Verify SSH Key
+    # Optionally add a debug step to inspect the key contents:
+    - name: Debug SSH Key Contents
       run: |
-        ssh-keygen -yf ~/.ssh/id_ed25519  # Verify if key is valid and generates a public key
+        cat ~/.ssh/id_ed25519
 
-    # Cache Pre-Commit Environments to avoid repeated setup
     - name: Cache Pre-Commit Environments
       uses: actions/cache@v2
       with:
@@ -47,44 +44,36 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pre-commit-
 
-    # Set up Python environment
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
 
-    # Install dependencies
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    # Install Pre-Commit and Run Hooks
     - name: Install Pre-Commit and Run Hooks
       run: |
         pre-commit install
         pre-commit run --all-files
 
-    # Debugging step: Display Pre-Commit log on failure (ensure logs are created)
     - name: Display Pre-Commit Log (on failure)
       if: failure()
       run: |
-        echo "Displaying pre-commit log..."
-        cat precommit_debug.log || echo "No pre-commit log found"  # Avoid error if no log
+        cat precommit_debug.log || echo "No pre-commit log found"
 
-    # Run unit tests
     - name: Run Tests
       run: |
         pytest tests/ --disable-warnings
 
-    # Run code coverage report
     - name: Run Coverage
       run: |
         coverage run -m pytest
         coverage report
 
-    # Analyze Code Complexity using Radon
     - name: Analyze Code Complexity (Radon)
       run: |
-        radon cc src/ -s -n C  # Check cyclomatic complexity for grades A, B, C
-        radon mi src/  # Measure maintainability index
+        radon cc src/ -s -n C
+        radon mi src/
