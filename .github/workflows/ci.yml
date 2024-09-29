@@ -2,48 +2,44 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         python-version: [3.8, 3.9]
 
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v3
 
-    # Show current directory and list files
-    - name: Show current directory and list files
+    - name: Display current directory and list files
       run: |
         echo "Current directory: $(pwd)"
         ls -la
 
-    # Write the SSH key to the ~/.ssh directory and set correct permissions
-    - name: Write SSH Key
+    # Create the SSH directory and set up known_hosts
+    - name: Set up SSH directory and known_hosts
       run: |
         mkdir -p ~/.ssh
-        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        echo "SSH key content (sanitized):"
-        head -n 5 ~/.ssh/id_rsa  # Show first few lines of key for verification
-        ls -la ~/.ssh  # List the contents of the .ssh directory for verification
+        touch ~/.ssh/known_hosts
+        ssh-keyscan github.com >> ~/.ssh/known_hosts
+        chmod 644 ~/.ssh/known_hosts
+        ls -la ~/.ssh  # Debugging step
 
-    # Convert SSH Key to PEM format (if needed)
-    - name: Convert SSH Key to PEM (if needed)
-      run: |
-        ssh-keygen -p -m PEM -f ~/.ssh/id_rsa || true  # Convert to PEM, skip if already in PEM
-
-    # Add the SSH key to the ssh-agent
-    - name: Add SSH Key to Agent
+    # Write the SSH key into the SSH agent directly, without writing to a file
+    - name: Add SSH Key to Agent from Environment Variable
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       run: |
         eval "$(ssh-agent -s)"
-        ssh-add ~/.ssh/id_rsa
-        ssh-add -l  # Debugging: List loaded identities to confirm the key was added
+        echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+        ssh-add -l  # List loaded identities to confirm the key was added
 
     - name: Cache Pre-Commit Environments
       uses: actions/cache@v2
