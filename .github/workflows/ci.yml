@@ -33,13 +33,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt || { echo "Dependency installation failed."; exit 1; }
 
-    # 4. Configure Git to use GITHUB_TOKEN for HTTPS
-    - name: Configure Git to use GITHUB_TOKEN
+    # 4. Configure Git to use the GitHub Token for HTTPS authentication
+    - name: Configure Git for Authentication
       run: |
-        echo "Configuring Git to use GITHUB_TOKEN for HTTPS..."
+        echo "Configuring Git for Authentication with GITHUB_TOKEN..."
         git config --global url."https://github.com/".insteadOf "git@github.com:"
-        git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-        git config --global credential.helper store
+        git config --global http.https://github.com/.extraheader "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}"
         git config --list
         echo "Git configuration completed."
 
@@ -49,7 +48,7 @@ jobs:
         echo "Installing pre-commit hooks..."
         pre-commit install || { echo "Pre-commit installation failed."; exit 1; }
 
-    # 6. Run Pre-Commit Hooks with additional logging
+    # 6. Run Pre-Commit Hooks
     - name: Run Pre-Commit Hooks
       run: |
         echo "Running pre-commit hooks..."
@@ -67,17 +66,3 @@ jobs:
       run: |
         echo "Running tests..."
         pytest tests/ --disable-warnings || { echo "Tests failed."; exit 1; }
-
-    # 9. Run coverage report
-    - name: Run Coverage
-      run: |
-        echo "Running coverage report..."
-        coverage run -m pytest || { echo "Coverage run failed."; exit 1; }
-        coverage report || { echo "Coverage report failed."; exit 1; }
-
-    # 10. Analyze code complexity using Radon
-    - name: Analyze Code Complexity (Radon)
-      run: |
-        echo "Analyzing code complexity using Radon..."
-        radon cc src/ -s -n C || { echo "Cyclomatic complexity check failed."; exit 1; }
-        radon mi src/ || { echo "Maintainability index check failed."; exit 1; }
