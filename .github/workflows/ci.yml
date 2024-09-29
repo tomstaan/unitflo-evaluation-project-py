@@ -19,7 +19,6 @@ jobs:
       uses: actions/checkout@v3
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-      # Add a check after the checkout
       run: |
         echo "Code checked out successfully."
         ls -al
@@ -29,7 +28,6 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-      # Check Python version
       run: |
         echo "Python setup complete."
         python --version
@@ -60,34 +58,35 @@ jobs:
         pre-commit install || { echo "Pre-commit installation failed."; exit 1; }
         echo "Running pre-commit hooks..."
         pre-commit run --all-files || { echo "Pre-commit hooks failed."; exit 1; }
-      # Debug the pre-commit log if it fails
-      if: failure()
-      - name: Debug Pre-Commit Log
-        run: |
-          echo "Pre-commit failed, checking log..."
-          cat /home/runner/.cache/pre-commit/pre-commit.log || echo "No pre-commit log found."
 
-    # 6. Run unit tests
+    # 6. Debug pre-commit log if it fails
+    - name: Debug Pre-Commit Log
+      if: failure()  # Conditional syntax fix
+      run: |
+        echo "Pre-commit failed, checking log..."
+        cat /home/runner/.cache/pre-commit/pre-commit.log || echo "No pre-commit log found."
+
+    # 7. Run unit tests
     - name: Run Tests
       run: |
         echo "Running tests..."
         pytest tests/ --disable-warnings || { echo "Tests failed."; exit 1; }
 
-    # 7. Run coverage report
+    # 8. Run coverage report
     - name: Run Coverage
       run: |
         echo "Running coverage report..."
         coverage run -m pytest || { echo "Coverage run failed."; exit 1; }
         coverage report || { echo "Coverage report failed."; exit 1; }
 
-    # 8. Analyze code complexity using Radon
+    # 9. Analyze code complexity using Radon
     - name: Analyze Code Complexity (Radon)
       run: |
         echo "Analyzing code complexity using Radon..."
         radon cc src/ -s -n C || { echo "Cyclomatic complexity check failed."; exit 1; }
         radon mi src/ || { echo "Maintainability index check failed."; exit 1; }
 
-    # 9. Check the final file structure after execution for any anomalies
+    # 10. Check the final file structure after execution for any anomalies
     - name: Check File Structure After Execution
       run: |
         echo "Final file structure after job execution:"
