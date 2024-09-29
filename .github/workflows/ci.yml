@@ -26,63 +26,61 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    # 3. Install dependencies with detailed logging
+    # 3. Install dependencies
     - name: Install dependencies
       run: |
         echo "Starting to install dependencies..."
         python -m pip install --upgrade pip
         pip install -r requirements.txt || { echo "Dependency installation failed."; exit 1; }
-        echo "Dependencies installed."
-        pip list  # Show installed packages for debugging
 
-    # 4. Configure Git to use GITHUB_TOKEN
-    - name: Configure Git to use GITHUB_TOKEN
+    # 4. Configure Git to use GITHUB_TOKEN for authentication in pre-commit
+    - name: Configure Git for GITHUB_TOKEN
       run: |
         echo "Configuring Git to use GITHUB_TOKEN..."
         git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
         git config --global credential.helper store
         git config --list
-        echo "Git configured successfully."
 
-    # 5. Install and run pre-commit hooks with extra debugging
+    # 5. Install Pre-Commit
     - name: Install Pre-Commit
       run: |
         echo "Installing pre-commit hooks..."
         pre-commit install || { echo "Pre-commit installation failed."; exit 1; }
-      
+
+    # 6. Run Pre-Commit Hooks with detailed logging
     - name: Run Pre-Commit Hooks
       run: |
         echo "Running pre-commit hooks..."
-        pre-commit run --all-files || { echo "Pre-commit hooks failed."; exit 1; }
+        pre-commit run --all-files --show-diff-on-failure --verbose || { echo "Pre-commit hooks failed."; exit 1; }
 
-    # 6. Debug pre-commit log if it fails
+    # 7. Debug Pre-Commit Log if it fails
     - name: Debug Pre-Commit Log
-      if: failure()  # Conditional syntax fix
+      if: failure()
       run: |
         echo "Pre-commit failed, checking log..."
         cat /home/runner/.cache/pre-commit/pre-commit.log || echo "No pre-commit log found."
 
-    # 7. Run unit tests
+    # 8. Run unit tests
     - name: Run Tests
       run: |
         echo "Running tests..."
         pytest tests/ --disable-warnings || { echo "Tests failed."; exit 1; }
 
-    # 8. Run coverage report
+    # 9. Run coverage report
     - name: Run Coverage
       run: |
         echo "Running coverage report..."
         coverage run -m pytest || { echo "Coverage run failed."; exit 1; }
         coverage report || { echo "Coverage report failed."; exit 1; }
 
-    # 9. Analyze code complexity using Radon
+    # 10. Analyze code complexity using Radon
     - name: Analyze Code Complexity (Radon)
       run: |
         echo "Analyzing code complexity using Radon..."
         radon cc src/ -s -n C || { echo "Cyclomatic complexity check failed."; exit 1; }
         radon mi src/ || { echo "Maintainability index check failed."; exit 1; }
 
-    # 10. Check the final file structure after execution for any anomalies
+    # 11. Check the final file structure after execution for any anomalies
     - name: Check File Structure After Execution
       run: |
         echo "Final file structure after job execution:"
