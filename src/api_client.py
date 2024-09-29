@@ -1,7 +1,7 @@
 # src/api_client.py
 import requests
 from requests.auth import HTTPBasicAuth
-from exceptions import APIClientError
+from src.exceptions import APIClientError
 from config.settings import Settings
 import logging
 

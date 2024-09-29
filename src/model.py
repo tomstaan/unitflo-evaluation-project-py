@@ -1,7 +1,7 @@
 # src/model.py
 import importlib
 import numpy as np
-from exceptions import ModelError
+from src.exceptions import ModelError
 from utilities import preprocess_input
 import logging
 

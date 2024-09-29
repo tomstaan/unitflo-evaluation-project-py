@@ -1,12 +1,13 @@
 # src/data_processor.py
 import pandas as pd
 import numpy as np
-from exceptions import DataProcessingError
+from src.exceptions import DataProcessingError
 from data.data_source import DataSource
 from services.service_a import ServiceA
 from services.service_b import ServiceB
 from utilities import normalize_data, detect_outliers
 from validations import validate_dataframe
+
 
 class DataProcessor:
     def __init__(self, source: DataSource):

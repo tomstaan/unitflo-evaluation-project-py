@@ -1,6 +1,6 @@
 # src/data/data_source.py
 import random
-from exceptions import DataProcessingError
+from src.exceptions import DataProcessingError
 import logging
 
 logger = logging.getLogger(__name__)

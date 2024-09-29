@@ -1,5 +1,5 @@
 # src/services/service_b.py
-from exceptions import ServiceError
+from src.exceptions import ServiceError
 import logging
 
 logger = logging.getLogger(__name__)

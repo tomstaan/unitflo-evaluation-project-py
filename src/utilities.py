@@ -1,7 +1,7 @@
 # src/utilities.py
 import pandas as pd
 import numpy as np
-from exceptions import UtilityError
+from src.exceptions import UtilityError
 import logging
 
 logger = logging.getLogger(__name__)

@@ -1,6 +1,6 @@
 # src/validations.py
 import pandas as pd
-from exceptions import ValidationError
+from src.exceptions import ValidationError
 import logging
 
 logger = logging.getLogger(__name__)
