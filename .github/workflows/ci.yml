@@ -14,22 +14,40 @@ jobs:
         python-version: [3.8, 3.9]
 
     steps:
-    - uses: actions/checkout@v3
+    # Checkout the code
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-    # Write the RSA private key to the ~/.ssh directory and set correct permissions
+    # Debug step: Show current working directory and files
+    - name: Show current directory and list files
+      run: |
+        echo "Current directory: $(pwd)"
+        echo "Listing files in current directory:"
+        ls -la
+
+    # Write the SSH private key to the ~/.ssh directory
     - name: Write SSH Key
       run: |
         mkdir -p ~/.ssh
         echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ls -la ~/.ssh  # Debugging: List files in ~/.ssh to verify the key was written correctly
+        echo "SSH key content (sanitized for security):"
+        head -n 3 ~/.ssh/id_rsa  # Show first few lines to ensure key is present (without exposing it)
+        ls -la ~/.ssh  # List the contents of the .ssh directory for verification
 
-    # Add the RSA private key to the ssh-agent
+    # Add the SSH key to the ssh-agent and debug
     - name: Add SSH Key to Agent
       run: |
         eval "$(ssh-agent -s)"
         ssh-add ~/.ssh/id_rsa
-        ssh-add -l  # Debugging: List identities to confirm the key was added successfully
+        echo "Added SSH key:"
+        ssh-add -l  # List loaded identities to confirm the key was added
+
+    # Debugging step: Verify that the SSH key can be used
+    - name: Test SSH key connection
+      run: |
+        echo "Testing SSH connection to GitHub"
+        ssh -T git@github.com || echo "SSH connection failed"
 
     # Cache Pre-Commit Environments
     - name: Cache Pre-Commit Environments
@@ -46,11 +64,22 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    # Debugging step: Verify Python environment
+    - name: Verify Python Setup
+      run: |
+        python --version
+        which python
+
     # Install dependencies
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+
+    # Debugging step: List installed dependencies
+    - name: List Installed Packages
+      run: |
+        pip freeze
 
     # Install Pre-Commit and Run Hooks
     - name: Install Pre-Commit and Run Hooks
@@ -58,7 +87,7 @@ jobs:
         pre-commit install
         pre-commit run --all-files
 
-    # Display Pre-Commit log on failure
+    # Debugging step: Display Pre-Commit log on failure
     - name: Display Pre-Commit Log (on failure)
       if: failure()
       run: |
@@ -69,14 +98,34 @@ jobs:
       run: |
         pytest tests/ --disable-warnings
 
+    # Debugging step: Show pytest output and result summary
+    - name: Show pytest output
+      if: failure()
+      run: |
+        echo "Displaying test results"
+        cat pytest_output.log || echo "No pytest output found"
+
     # Run coverage report
     - name: Run Coverage
       run: |
         coverage run -m pytest
         coverage report
 
+    # Debugging step: Verify coverage report
+    - name: Display Coverage Report
+      run: |
+        coverage report
+
     # Analyze code complexity using Radon
     - name: Analyze Code Complexity (Radon)
       run: |
         radon cc src/ -s -n C
+        radon mi src/
+
+    # Debugging step: Show complexity analysis results
+    - name: Show Radon results
+      run: |
+        echo "Cyclomatic Complexity:"
+        radon cc src/ -s -n C
+        echo "Maintainability Index:"
         radon mi src/
