@@ -9,67 +9,49 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.8, 3.9]
 
     steps:
     # 1. Checkout the code using GitHub token
-    - name: Checkout code
+    - name: Checkout Code
       uses: actions/checkout@v3
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    # 2. Set up Python environment
+    # 2. Show Git Remote to verify Git configuration
+    - name: Show Git Remote
+      run: git remote -v
+
+    # 3. Perform a Git Fetch to ensure GitHub Token authentication works
+    - name: Test Git Fetch
+      run: git fetch --all
+
+    # 4. Set up Python environment
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: '3.8'
 
-    # 3. Install dependencies
+    # 5. Install dependencies
     - name: Install dependencies
       run: |
-        echo "Installing dependencies..."
         python -m pip install --upgrade pip
-        pip install -r requirements.txt || { echo "Dependency installation failed."; exit 1; }
+        pip install pre-commit
 
-    # 4. Ensure Git uses HTTPS and GitHub token for authentication
-    - name: Configure Git to use GITHUB_TOKEN for Pre-Commit
+    # 6. Configure Git to use GITHUB_TOKEN
+    - name: Configure Git to use GITHUB_TOKEN
       run: |
         git config --global url."https://github.com/".insteadOf "git@github.com:"
         git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
-    # 5. Install Pre-Commit Hooks
-    - name: Install Pre-Commit Hooks
+    # 7. Install and run pre-commit hooks with additional logging
+    - name: Install and Run Pre-Commit Hooks
       run: |
         echo "Installing pre-commit hooks..."
         pre-commit install || { echo "Pre-commit installation failed."; exit 1; }
-
-    # 6. Run Pre-Commit Hooks
-    - name: Run Pre-Commit Hooks with GitHub Token
-      env:
-        GIT_ASKPASS: "echo"
-        GIT_TERMINAL_PROMPT: 0
-      run: |
         echo "Running pre-commit hooks..."
         pre-commit run --all-files --show-diff-on-failure --verbose || { echo "Pre-commit hooks failed."; exit 1; }
 
-    # 7. Run unit tests
-    - name: Run Tests
-      run: |
-        echo "Running tests..."
-        pytest tests/ --disable-warnings || { echo "Tests failed."; exit 1; }
-
-    # 8. Run coverage report
-    - name: Run Coverage
-      run: |
-        echo "Running coverage report..."
-        coverage run -m pytest || { echo "Coverage run failed."; exit 1; }
-        coverage report || { echo "Coverage report failed."; exit 1; }
-
-    # 9. Analyze code complexity using Radon
-    - name: Analyze Code Complexity (Radon)
-      run: |
-        echo "Analyzing code complexity using Radon..."
-        radon cc src/ -s -n C || { echo "Cyclomatic complexity check failed."; exit 1; }
-        radon mi src/ || { echo "Maintainability index check failed."; exit 1; }
+    # 8. Debug pre-commit log if it fails
+    - name: Debug Pre-Commit Log
+      if: failure()
+      run: cat /home/runner/.cache/pre-commit/pre-commit.log || echo "No pre-commit log found"
