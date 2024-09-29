@@ -16,21 +16,26 @@ jobs:
         python-version: [3.8, 3.9]  # You can add other versions if necessary
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3  # Updated to v3 to fix Node.js version warning
 
     # Write the SSH private key to the ~/.ssh directory and set correct permissions
     - name: Write SSH Key
       run: |
         mkdir -p ~/.ssh
-        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
         ls -la ~/.ssh  # Debug: List files in ~/.ssh to verify
 
-    # Add the SSH key to the ssh-agent
+    # Add the SSH key to the ssh-agent (switch to ed25519)
     - name: Add SSH Key to Agent
       run: |
         eval "$(ssh-agent -s)"
-        ssh-add ~/.ssh/id_rsa
+        ssh-add ~/.ssh/id_ed25519  # Update to use id_ed25519
+
+    # Debugging step to verify the key
+    - name: Verify SSH Key
+      run: |
+        ssh-keygen -yf ~/.ssh/id_ed25519  # Verify if key is valid and generates a public key
 
     # Cache Pre-Commit Environments to avoid repeated setup
     - name: Cache Pre-Commit Environments
@@ -41,16 +46,19 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pre-commit-
 
+    # Set up Python environment
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
 
+    # Install dependencies
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    # Install Pre-Commit and Run Hooks
     - name: Install Pre-Commit and Run Hooks
       run: |
         pre-commit install
@@ -63,15 +71,18 @@ jobs:
         echo "Displaying pre-commit log..."
         cat precommit_debug.log
 
+    # Run unit tests
     - name: Run Tests
       run: |
         pytest tests/ --disable-warnings
 
+    # Run code coverage report
     - name: Run Coverage
       run: |
         coverage run -m pytest
         coverage report
 
+    # Analyze Code Complexity using Radon
     - name: Analyze Code Complexity (Radon)
       run: |
         radon cc src/ -s -n C  # Check cyclomatic complexity for grades A, B, C
