@@ -27,7 +27,7 @@ jobs:
     - name: Configure Git to use SSH
       run: |
         git config --global url."git@github.com:".insteadOf "https://github.com/"
-    
+
     # Cache Pre-Commit Environments to avoid repeated setup
     - name: Cache Pre-Commit Environments
       uses: actions/cache@v2
@@ -47,17 +47,18 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Install Pre-Commit and Run Hooks
+    # Force pre-commit verbose logging and use an explicit log path
+    - name: Install Pre-Commit and Run Hooks with Verbose Logging
       run: |
         pre-commit install
-        pre-commit run --all-files
+        pre-commit run --all-files -v > precommit_debug.log || (cat precommit_debug.log && exit 1)
 
-    # Debugging step: Display Pre-Commit log on failure
+    # Debugging step: Display Pre-Commit Log if the run fails
     - name: Display Pre-Commit Log (on failure)
       if: failure()
       run: |
         echo "Displaying pre-commit log..."
-        cat /home/runner/.cache/pre-commit/pre-commit.log
+        cat precommit_debug.log
 
     - name: Run Tests
       run: |
