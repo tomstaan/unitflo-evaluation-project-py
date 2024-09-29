@@ -2,52 +2,93 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         python-version: [3.8, 3.9]
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3  # Uses GITHUB_TOKEN for HTTPS authentication
+    - uses: actions/checkout@v3
 
+    # Step 1: Set up SSH Key and ensure correct permissions
+    - name: Setup SSH Key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519  # Use the secret stored in GitHub Secrets
+        chmod 600 ~/.ssh/id_ed25519  # Set correct permissions for the key
+        ssh-keyscan github.com >> ~/.ssh/known_hosts  # Add GitHub to known hosts to avoid manual confirmation
+      shell: bash
+
+    # Step 2: Add SSH key to the ssh-agent
+    - name: Add SSH Key to Agent
+      run: |
+        eval "$(ssh-agent -s)"  # Start ssh-agent in the background
+        ssh-add ~/.ssh/id_ed25519  # Add the SSH private key
+        ssh-add -l  # List added keys to verify
+      shell: bash
+
+    # Step 3: Debugging step to verify the key
+    - name: Verify SSH Setup
+      run: |
+        ls -la ~/.ssh  # Check if the SSH key is properly saved
+        cat ~/.ssh/id_ed25519  # Debugging: Show the key content (you should remove this line after debugging)
+        ssh -T git@github.com || true  # Test SSH connection to GitHub
+      shell: bash
+
+    # Cache Pre-Commit Environments to avoid repeated setup
+    - name: Cache Pre-Commit Environments
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/pre-commit
+        key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pre-commit-
+
+    # Step 4: Set up Python environment
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
 
+    # Step 5: Install dependencies
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    # Step 6: Install Pre-Commit and Run Hooks
     - name: Install Pre-Commit and Run Hooks
       run: |
         pre-commit install
         pre-commit run --all-files
 
-    # Debugging step: Display Pre-Commit log on failure
+    # Step 7: Debugging step to display Pre-Commit log on failure
     - name: Display Pre-Commit Log (on failure)
       if: failure()
       run: |
         cat precommit_debug.log || echo "No pre-commit log found"
 
+    # Step 8: Run unit tests
     - name: Run Tests
       run: |
         pytest tests/ --disable-warnings
 
+    # Step 9: Run coverage report
     - name: Run Coverage
       run: |
         coverage run -m pytest
         coverage report
 
+    # Step 10: Analyze code complexity using Radon
     - name: Analyze Code Complexity (Radon)
       run: |
         radon cc src/ -s -n C
         radon mi src/
+
