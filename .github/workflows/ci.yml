@@ -14,24 +14,26 @@ jobs:
         python-version: [3.8, 3.9]
 
     steps:
-    - uses: actions/checkout@v3
+    # Checkout the code
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-    # Use PAT for Git operations
-    - name: Set up Git to use PAT
+    # Debug current directory and list files
+    - name: Show current directory and list files
       run: |
-        git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
+        echo "Current directory: $(pwd)"
+        ls -la
 
     # Write the SSH key to the ~/.ssh directory and set correct permissions
     - name: Write SSH Key
       run: |
         mkdir -p ~/.ssh
-        echo "$CI_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
         ssh-keyscan github.com >> ~/.ssh/known_hosts
         ls -la ~/.ssh
-
       env:
-        CI_SSH_PRIVATE_KEY: ${{ secrets.CI_SSH_PRIVATE_KEY }}
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
     # Add SSH key to ssh-agent and verify
     - name: Add SSH Key to Agent
@@ -39,12 +41,13 @@ jobs:
         eval "$(ssh-agent -s)"
         ssh-add ~/.ssh/id_ed25519
         ssh-add -l  # Verify the key has been added
+        echo "SSH key successfully added to the agent."
 
-    # Set up GIT_SSH_COMMAND and use it for the following steps
+    # Set up GIT_SSH_COMMAND for further steps
     - name: Set GIT_SSH_COMMAND
       run: |
         export GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
-        echo $GIT_SSH_COMMAND
+        echo "GIT_SSH_COMMAND set."
 
     # Cache Pre-Commit Environments to avoid repeated setup
     - name: Cache Pre-Commit Environments
@@ -61,25 +64,39 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    # Install dependencies
+    # Install dependencies and show detailed logs
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip freeze  # Show installed packages
 
-    # Install Pre-Commit and Run Hooks
+    # Install Pre-Commit and Run Hooks with debug
     - name: Install Pre-Commit and Run Hooks
       run: |
+        echo "Running pre-commit installation."
         GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" pre-commit install
+        echo "Running pre-commit hooks."
         GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" pre-commit run --all-files
 
-    # Run Tests
+    # Run unit tests with detailed logs
     - name: Run Tests
       run: |
+        echo "Running tests with pytest."
         pytest tests/ --disable-warnings
+        echo "Tests completed."
 
-    # Run Coverage
+    # Run Coverage report
     - name: Run Coverage
       run: |
+        echo "Running coverage report."
         coverage run -m pytest
         coverage report
+
+    # Analyze code complexity using Radon
+    - name: Analyze Code Complexity (Radon)
+      run: |
+        echo "Running Radon to check cyclomatic complexity."
+        radon cc src/ -s -n C
+        echo "Running Radon to check maintainability index."
+        radon mi src/
