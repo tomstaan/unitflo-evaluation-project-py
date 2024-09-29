@@ -14,30 +14,25 @@ jobs:
         python-version: [3.8, 3.9]
 
     steps:
+    # Debugging: Show available environment variables and runner information
+    - name: Show environment info
+      run: |
+        echo "Environment variables:"
+        printenv
+        echo "Runner details:"
+        uname -a
+
     # Checkout the code using GITHUB_TOKEN for authentication
     - name: Checkout code with GITHUB_TOKEN
       uses: actions/checkout@v3
       with:
         token: ${{ secrets.GITHUB_TOKEN }}  # Using the default GitHub token
 
-    # Debugging: show current directory and list files
+    # Debugging: Verify the working directory and list files
     - name: Show current directory and list files
       run: |
         echo "Current directory: $(pwd)"
         ls -la
-
-    # Install Pre-Commit and Run Hooks with GITHUB_TOKEN
-    - name: Install Pre-Commit and Run Hooks
-      run: |
-        echo "Running pre-commit installation."
-        git config --global url."https://github.com/".insteadOf "git@github.com:"  # Ensure pre-commit uses HTTPS
-        git config --global credential.helper cache  # Cache credentials for subsequent fetches
-        git config --global --unset credential.helper  # Clear credential helper to use token
-        pre-commit install
-        echo "Running pre-commit hooks."
-        GIT_CURL_VERBOSE=1 GIT_TRACE=1 GIT_ASKPASS=echo pre-commit run --all-files  # Enable detailed Git tracing
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Use GitHub token for authentication
 
     # Cache Pre-Commit Environments to avoid repeated setup
     - name: Cache Pre-Commit Environments
@@ -54,12 +49,32 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    # Debugging: Show Python version and environment
+    - name: Show Python version
+      run: |
+        python --version
+        pip --version
+
     # Install dependencies
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip freeze  # Show installed packages
+
+    # Debugging: Show installed dependencies
+    - name: Show installed dependencies
+      run: pip freeze
+
+    # Install Pre-Commit and Run Hooks with debugging enabled
+    - name: Install Pre-Commit and Run Hooks
+      run: |
+        echo "Running pre-commit installation."
+        git config --global url."https://github.com/".insteadOf "git@github.com:"  # Ensure pre-commit uses HTTPS
+        pre-commit install
+        echo "Running pre-commit hooks."
+        GIT_TRACE=1 GIT_CURL_VERBOSE=1 pre-commit run --all-files
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Use GitHub token for authentication
 
     # Run unit tests
     - name: Run Tests
