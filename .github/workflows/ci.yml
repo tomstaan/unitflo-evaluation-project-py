@@ -18,15 +18,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    # Set up Git credentials for fetching repositories via HTTPS
-    - name: Set up Git credentials
+    # Set up Git to use GITHUB_TOKEN for fetching the repositories
+    - name: Set up Git credentials for fetching pre-commit hooks
       run: |
-        git config --global user.email "your-email@example.com"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git config --global user.name "GitHub Actions"
-        git config --global credential.helper store
-        git config --global url."https://github.com/".insteadOf "git@github.com:"
         git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-
+    
     # Cache Pre-Commit Environments to avoid repeated setup
     - name: Cache Pre-Commit Environments
       uses: actions/cache@v2
@@ -46,6 +44,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    # Install Pre-Commit and Run Hooks
     - name: Install Pre-Commit and Run Hooks
       run: |
         pre-commit install
