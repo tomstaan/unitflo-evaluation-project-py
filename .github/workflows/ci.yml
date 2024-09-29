@@ -8,9 +8,7 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
         python-version: [3.8, 3.9]
@@ -18,23 +16,21 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    # Write the SSH key to the ~/.ssh directory and set correct permissions
     - name: Write SSH Key
       run: |
         mkdir -p ~/.ssh
         echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+        cat ~/.ssh/id_ed25519  # Debugging: Show the SSH key content (remove later)
         chmod 600 ~/.ssh/id_ed25519
-        ls -la ~/.ssh
+        ls -la ~/.ssh  # Debugging: List files in ~/.ssh to verify the key was written correctly
 
+    # Add the SSH key to the ssh-agent and debug
     - name: Add SSH Key to Agent
       run: |
         eval "$(ssh-agent -s)"
         ssh-add ~/.ssh/id_ed25519
-        ssh-add -l
-
-    # Optionally add a debug step to inspect the key contents:
-    - name: Debug SSH Key Contents
-      run: |
-        cat ~/.ssh/id_ed25519
+        ssh-add -l  # Debugging: List identities to confirm the key was added successfully
 
     - name: Cache Pre-Commit Environments
       uses: actions/cache@v2
@@ -44,35 +40,42 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pre-commit-
 
+    # Set up Python environment
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
 
+    # Install dependencies
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    # Install Pre-Commit and Run Hooks
     - name: Install Pre-Commit and Run Hooks
       run: |
         pre-commit install
         pre-commit run --all-files
 
+    # Debugging step: Display Pre-Commit log on failure
     - name: Display Pre-Commit Log (on failure)
       if: failure()
       run: |
         cat precommit_debug.log || echo "No pre-commit log found"
 
+    # Run unit tests
     - name: Run Tests
       run: |
         pytest tests/ --disable-warnings
 
+    # Run coverage report
     - name: Run Coverage
       run: |
         coverage run -m pytest
         coverage report
 
+    # Analyze code complexity using Radon
     - name: Analyze Code Complexity (Radon)
       run: |
         radon cc src/ -s -n C
