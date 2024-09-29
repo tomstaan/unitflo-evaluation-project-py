@@ -2,14 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
         python-version: [3.8, 3.9]
@@ -17,38 +16,35 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    # Step 1: Set up SSH Key and ensure correct permissions
-    - name: Setup SSH Key
+    # Use PAT for Git operations
+    - name: Set up Git to use PAT
+      run: |
+        git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
+
+    # Write the SSH key to the ~/.ssh directory and set correct permissions
+    - name: Write SSH Key
       run: |
         mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519  # Use the secret stored in GitHub Secrets
-        chmod 600 ~/.ssh/id_ed25519  # Set correct permissions for the key
-        ssh-keyscan github.com >> ~/.ssh/known_hosts  # Add GitHub to known hosts to avoid manual confirmation
-      shell: bash
+        echo "$CI_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
+        ssh-keyscan github.com >> ~/.ssh/known_hosts
+        ls -la ~/.ssh
 
-    # Step 2: Add SSH key to the ssh-agent
+      env:
+        CI_SSH_PRIVATE_KEY: ${{ secrets.CI_SSH_PRIVATE_KEY }}
+
+    # Add SSH key to ssh-agent and verify
     - name: Add SSH Key to Agent
       run: |
-        eval "$(ssh-agent -s)"  # Start ssh-agent in the background
-        ssh-add ~/.ssh/id_ed25519  # Add the SSH private key
-        ssh-add -l  # List added keys to verify
-      shell: bash
+        eval "$(ssh-agent -s)"
+        ssh-add ~/.ssh/id_ed25519
+        ssh-add -l  # Verify the key has been added
 
-    # Step 3: Debugging step to verify the key
-    - name: Verify SSH Setup
+    # Set up GIT_SSH_COMMAND and use it for the following steps
+    - name: Set GIT_SSH_COMMAND
       run: |
-        ls -la ~/.ssh  # Check if the SSH key is properly saved
-        cat ~/.ssh/id_ed25519  # Debugging: Show the key content (you should remove this line after debugging)
-        ssh -T git@github.com || true  # Test SSH connection to GitHub
-      shell: bash
-
-    # Step 4: Force Git to use SSH instead of HTTPS
-    - name: Configure Git to Use SSH
-      run: |
-        git config --global url."git@github.com:".insteadOf "https://github.com/"
-        git config --global user.name "GitHub Actions"
-        git config --global user.email "actions@github.com"
-      shell: bash
+        export GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+        echo $GIT_SSH_COMMAND
 
     # Cache Pre-Commit Environments to avoid repeated setup
     - name: Cache Pre-Commit Environments
@@ -59,44 +55,31 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pre-commit-
 
-    # Step 5: Set up Python environment
+    # Set up Python environment
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
 
-    # Step 6: Install dependencies
+    # Install dependencies
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    # Step 7: Install Pre-Commit and Run Hooks
+    # Install Pre-Commit and Run Hooks
     - name: Install Pre-Commit and Run Hooks
       run: |
         GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" pre-commit install
         GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" pre-commit run --all-files
-      shell: bash
 
-    # Step 8: Debugging step to display Pre-Commit log on failure
-    - name: Display Pre-Commit Log (on failure)
-      if: failure()
-      run: |
-        cat precommit_debug.log || echo "No pre-commit log found"
-
-    # Step 9: Run unit tests
+    # Run Tests
     - name: Run Tests
       run: |
         pytest tests/ --disable-warnings
 
-    # Step 10: Run coverage report
+    # Run Coverage
     - name: Run Coverage
       run: |
         coverage run -m pytest
         coverage report
-
-    # Step 11: Analyze code complexity using Radon
-    - name: Analyze Code Complexity (Radon)
-      run: |
-        radon cc src/ -s -n C
-        radon mi src/
