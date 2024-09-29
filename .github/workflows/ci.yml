@@ -33,59 +33,49 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt || { echo "Dependency installation failed."; exit 1; }
 
-    # 4. Set up custom Git credentials using GITHUB_TOKEN
-    - name: Set up custom Git credentials
+    # 4. Configure Git to use GITHUB_TOKEN for HTTPS
+    - name: Configure Git to use GITHUB_TOKEN
       run: |
-        echo "Setting up custom Git credentials for pre-commit..."
-        git config --global credential.helper cache
+        echo "Configuring Git to use GITHUB_TOKEN for HTTPS..."
         git config --global url."https://github.com/".insteadOf "git@github.com:"
         git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-        
-        # Set up GIT_ASKPASS to pass the token during pre-commit
-        echo 'echo "${{ secrets.GITHUB_TOKEN }}"' > ~/git-askpass.sh
-        chmod +x ~/git-askpass.sh
-        git config --global core.askpass "~/git-askpass.sh"
+        git config --global credential.helper store
+        git config --list
+        echo "Git configuration completed."
 
-    # 5. Convert SSH to HTTPS in pre-commit-config.yaml (optional)
-    - name: Convert SSH to HTTPS in pre-commit-config
-      run: |
-        sed -i 's/git@github.com:/https:\/\/github.com\//' .pre-commit-config.yaml
-
-    # 6. Install Pre-Commit
-    - name: Install Pre-Commit
+    # 5. Install Pre-Commit Hooks
+    - name: Install Pre-Commit Hooks
       run: |
         echo "Installing pre-commit hooks..."
         pre-commit install || { echo "Pre-commit installation failed."; exit 1; }
 
-    # 7. Run Pre-Commit Hooks with debugging
+    # 6. Run Pre-Commit Hooks with additional logging
     - name: Run Pre-Commit Hooks
-      env:
-        GIT_ASKPASS: ~/git-askpass.sh  # Ensure the askpass helper is used
       run: |
         echo "Running pre-commit hooks..."
         pre-commit run --all-files --show-diff-on-failure --verbose || { echo "Pre-commit hooks failed."; exit 1; }
 
-    # 8. Debug Pre-Commit Log if it fails
+    # 7. Debug Pre-Commit Log if it fails
     - name: Debug Pre-Commit Log
       if: failure()
       run: |
         echo "Pre-commit failed, checking log..."
         cat /home/runner/.cache/pre-commit/pre-commit.log || echo "No pre-commit log found."
 
-    # 9. Run unit tests
+    # 8. Run unit tests
     - name: Run Tests
       run: |
         echo "Running tests..."
         pytest tests/ --disable-warnings || { echo "Tests failed."; exit 1; }
 
-    # 10. Run coverage report
+    # 9. Run coverage report
     - name: Run Coverage
       run: |
         echo "Running coverage report..."
         coverage run -m pytest || { echo "Coverage run failed."; exit 1; }
         coverage report || { echo "Coverage report failed."; exit 1; }
 
-    # 11. Analyze code complexity using Radon
+    # 10. Analyze code complexity using Radon
     - name: Analyze Code Complexity (Radon)
       run: |
         echo "Analyzing code complexity using Radon..."
