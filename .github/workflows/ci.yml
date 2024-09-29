@@ -1,63 +1,24 @@
-name: CI
+name: CI - Test GitHub Token
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.8, 3.9]
 
     steps:
-    # Checkout code using the built-in GITHUB_TOKEN
-    - name: Checkout code
+    # Checkout using the GitHub Token
+    - name: Checkout Code
       uses: actions/checkout@v3
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}  # Built-in token for secure Git operations
+        token: ${{ secrets.GITHUB_TOKEN }} # Ensure token is passed
 
-    # Set up Python environment
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
+    # Print current git remote to see how it's configured
+    - name: Show Git Remote
+      run: git remote -v
 
-    # Install dependencies
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-
-    # Ensure Git uses HTTPS with GITHUB_TOKEN for authentication
-    - name: Configure Git to use GITHUB_TOKEN
-      run: |
-        git config --global url."https://github.com/".insteadOf "git@github.com:"
-        git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-
-    # Install Pre-Commit and Run Hooks
-    - name: Install Pre-Commit and Run Hooks
-      run: |
-        echo "Running pre-commit installation."
-        pre-commit install
-        echo "Running pre-commit hooks."
-        pre-commit run --all-files
-
-    # Run unit tests
-    - name: Run Tests
-      run: pytest tests/ --disable-warnings
-
-    # Run coverage report
-    - name: Run Coverage
-      run: |
-        coverage run -m pytest
-        coverage report
-
-    # Analyze code complexity using Radon
-    - name: Analyze Code Complexity (Radon)
-      run: |
-        radon cc src/ -s -n C
-        radon mi src/
+    # Perform a simple Git fetch to test access
+    - name: Test Git Fetch
+      run: git fetch --all
