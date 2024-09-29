@@ -1,4 +1,4 @@
-name: CI - Pre-Commit with GitHub Token
+name: CI - Pre-Commit with Local Hook Caching
 
 on:
   push:
@@ -26,66 +26,43 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    # 3. Install dependencies
-    - name: Install dependencies
+    # 3. Install dependencies (including pre-commit hooks)
+    - name: Install dependencies and pre-cache pre-commit hooks
       run: |
         echo "Installing dependencies..."
         python -m pip install --upgrade pip
         pip install -r requirements.txt || { echo "Dependency installation failed."; exit 1; }
 
-    # 4. Configure Git for Authentication using GITHUB_TOKEN
-    - name: Configure Git for Authentication
-      run: |
-        echo "Configuring Git to use GITHUB_TOKEN for HTTPS..."
-        git config --global url."https://github.com/".insteadOf "git@github.com:"
-        git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-        git config --global credential.helper store
-        git config --list
-        echo "Git configuration completed."
+        echo "Installing and pre-caching pre-commit hooks..."
+        pre-commit install
+        pre-commit autoupdate  # Ensure all hooks are up to date
+        pre-commit run --all-files || { echo "Pre-commit hook pre-run failed."; exit 1; }
 
-    # 5. Debug Git Configuration
-    - name: Check Git Config
+    # 4. Run Pre-Commit Hooks with Local Caching (No network calls)
+    - name: Run Pre-Commit Hooks with Cached Hooks
+      env:
+        PRE_COMMIT_HOME: /home/runner/.cache/pre-commit  # Use pre-cached directory
       run: |
-        echo "Checking Git configuration..."
-        git remote -v
-        git config --get remote.origin.url
-
-    # 6. Ensure pre-commit uses GITHUB_TOKEN for Git operations
-    - name: Install Pre-Commit Hooks with GITHUB_TOKEN
-      run: |
-        echo "Installing pre-commit hooks..."
-        git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-        pre-commit install || { echo "Pre-commit installation failed."; exit 1; }
-
-    # 7. Run Pre-Commit Hooks with Verbose Logging
-    - name: Run Pre-Commit Hooks
-      run: |
-        echo "Running pre-commit hooks with verbose logging..."
+        echo "Running pre-commit hooks with local caching..."
         pre-commit run --all-files --show-diff-on-failure --verbose || { echo "Pre-commit hooks failed."; exit 1; }
 
-    # 8. Debug Pre-Commit Log if it fails
-    - name: Debug Pre-Commit Log
-      if: failure()
-      run: |
-        echo "Pre-commit failed, checking log..."
-        cat /home/runner/.cache/pre-commit/pre-commit.log || echo "No pre-commit log found."
-
-    # 9. Run unit tests
+    # 5. Run unit tests
     - name: Run Tests
       run: |
         echo "Running tests..."
         pytest tests/ --disable-warnings || { echo "Tests failed."; exit 1; }
 
-    # 10. Run coverage report
+    # 6. Run coverage report
     - name: Run Coverage
       run: |
         echo "Running coverage report..."
         coverage run -m pytest || { echo "Coverage run failed."; exit 1; }
         coverage report || { echo "Coverage report failed."; exit 1; }
 
-    # 11. Analyze code complexity using Radon
+    # 7. Analyze code complexity using Radon
     - name: Analyze Code Complexity (Radon)
       run: |
         echo "Analyzing code complexity using Radon..."
         radon cc src/ -s -n C || { echo "Cyclomatic complexity check failed."; exit 1; }
         radon mi src/ || { echo "Maintainability index check failed."; exit 1; }
+
