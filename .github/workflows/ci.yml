@@ -17,26 +17,26 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Debug: Show current directory and list files
+    # Show current directory and list files
     - name: Show current directory and list files
       run: |
         echo "Current directory: $(pwd)"
         ls -la
 
-    # Write the SSH key to the ~/.ssh directory
+    # Write the SSH key to the ~/.ssh directory and set correct permissions
     - name: Write SSH Key
       run: |
         mkdir -p ~/.ssh
         echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         echo "SSH key content (sanitized):"
-        head -n 5 ~/.ssh/id_rsa  # Display a few lines to verify the key content is written
+        head -n 5 ~/.ssh/id_rsa  # Show first few lines of key for verification
         ls -la ~/.ssh  # List the contents of the .ssh directory for verification
 
-    # Convert SSH key to PEM format (in case it's not)
+    # Convert SSH Key to PEM format (if needed)
     - name: Convert SSH Key to PEM (if needed)
       run: |
-        ssh-keygen -p -m PEM -f ~/.ssh/id_rsa || true  # Safeguard in case it's already in PEM format
+        ssh-keygen -p -m PEM -f ~/.ssh/id_rsa || true  # Convert to PEM, skip if already in PEM
 
     # Add the SSH key to the ssh-agent
     - name: Add SSH Key to Agent
@@ -45,7 +45,6 @@ jobs:
         ssh-add ~/.ssh/id_rsa
         ssh-add -l  # Debugging: List loaded identities to confirm the key was added
 
-    # Cache Pre-Commit Environments
     - name: Cache Pre-Commit Environments
       uses: actions/cache@v2
       with:
@@ -54,7 +53,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pre-commit-
 
-    # Set up Python environment
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
