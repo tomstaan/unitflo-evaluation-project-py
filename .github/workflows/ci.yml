@@ -18,22 +18,19 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    # Set up SSH to avoid HTTPS GitHub Authentication Issues
-    - name: Set up SSH
-      uses: webfactory/ssh-agent@v0.5.3
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    - name: Set Permissions for SSH Key
+    # Write the SSH private key to the ~/.ssh directory and set correct permissions
+    - name: Write SSH Key
       run: |
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
+        ls -la ~/.ssh  # Debug: List files in ~/.ssh to verify
 
-    # Manually check SSH key to debug
-    - name: Check SSH Key Manually
+    # Add the SSH key to the ssh-agent
+    - name: Add SSH Key to Agent
       run: |
-        ssh-add -l
+        eval "$(ssh-agent -s)"
         ssh-add ~/.ssh/id_rsa
-        echo "Key check completed"
 
     # Cache Pre-Commit Environments to avoid repeated setup
     - name: Cache Pre-Commit Environments
