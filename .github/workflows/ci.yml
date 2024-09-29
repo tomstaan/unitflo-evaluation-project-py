@@ -14,72 +14,82 @@ jobs:
         python-version: [3.8, 3.9]
 
     steps:
-    # Checkout the code using GitHub token (authentication should work here)
+    # 1. Checkout the code using GitHub token
     - name: Checkout code
       uses: actions/checkout@v3
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
+      # Add a check after the checkout
+      run: |
+        echo "Code checked out successfully."
+        ls -al
 
-    # Set up Python environment
+    # 2. Set up Python environment
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+      # Check Python version
+      run: |
+        echo "Python setup complete."
+        python --version
+        pip --version
 
-    # Install dependencies
+    # 3. Install dependencies with detailed logging
     - name: Install dependencies
       run: |
-        echo "Installing dependencies..."
+        echo "Starting to install dependencies..."
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r requirements.txt || { echo "Dependency installation failed."; exit 1; }
         echo "Dependencies installed."
+        pip list  # Show installed packages for debugging
 
-    # Ensure Git uses HTTPS and GITHUB_TOKEN for authentication
+    # 4. Configure Git to use GITHUB_TOKEN
     - name: Configure Git to use GITHUB_TOKEN
       run: |
         echo "Configuring Git to use GITHUB_TOKEN..."
         git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
         git config --global credential.helper store
         git config --list
+        echo "Git configured successfully."
 
-    # Install and run pre-commit hooks with extra debugging
+    # 5. Install and run pre-commit hooks with extra debugging
     - name: Install Pre-Commit and Run Hooks
       run: |
-        echo "Running pre-commit installation..."
-        pre-commit install || { echo 'Pre-commit installation failed'; exit 1; }
+        echo "Installing pre-commit hooks..."
+        pre-commit install || { echo "Pre-commit installation failed."; exit 1; }
         echo "Running pre-commit hooks..."
-        pre-commit run --all-files || { echo 'Pre-commit hooks failed'; exit 1; }
-
-    # Debugging pre-commit log on failure
-    - name: Debug Pre-Commit Log
+        pre-commit run --all-files || { echo "Pre-commit hooks failed."; exit 1; }
+      # Debug the pre-commit log if it fails
       if: failure()
-      run: |
-        echo "Pre-commit failed, checking log..."
-        cat /home/runner/.cache/pre-commit/pre-commit.log || echo "No pre-commit log found."
+      - name: Debug Pre-Commit Log
+        run: |
+          echo "Pre-commit failed, checking log..."
+          cat /home/runner/.cache/pre-commit/pre-commit.log || echo "No pre-commit log found."
 
-    # Run unit tests
+    # 6. Run unit tests
     - name: Run Tests
       run: |
         echo "Running tests..."
-        pytest tests/ --disable-warnings || { echo 'Tests failed'; exit 1; }
+        pytest tests/ --disable-warnings || { echo "Tests failed."; exit 1; }
 
-    # Run coverage report
+    # 7. Run coverage report
     - name: Run Coverage
       run: |
-        echo "Running coverage..."
-        coverage run -m pytest || { echo 'Coverage run failed'; exit 1; }
-        coverage report || { echo 'Coverage report failed'; exit 1; }
+        echo "Running coverage report..."
+        coverage run -m pytest || { echo "Coverage run failed."; exit 1; }
+        coverage report || { echo "Coverage report failed."; exit 1; }
 
-    # Analyze code complexity using Radon
+    # 8. Analyze code complexity using Radon
     - name: Analyze Code Complexity (Radon)
       run: |
         echo "Analyzing code complexity using Radon..."
-        radon cc src/ -s -n C || { echo 'Cyclomatic complexity check failed'; exit 1; }
-        radon mi src/ || { echo 'Maintainability index check failed'; exit 1; }
+        radon cc src/ -s -n C || { echo "Cyclomatic complexity check failed."; exit 1; }
+        radon mi src/ || { echo "Maintainability index check failed."; exit 1; }
 
-    # Capture more details for debugging
+    # 9. Check the final file structure after execution for any anomalies
     - name: Check File Structure After Execution
       run: |
-        echo "Listing directory structure..."
+        echo "Final file structure after job execution:"
         ls -R
         echo "Job completed."
