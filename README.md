@@ -10,7 +10,7 @@ The UnitFlo Evaluation Project is a robust, production-ready solution designed t
 - Docker Support: Dockerfile included to ensure consistent environments across different machines.
 Continuous Integration: Pre-configured GitHub Actions workflow to automate testing, linting, and code quality checks.
 
-Setup Instructions
+## Setup Instructions
 1. Clone the Repository
 ``` bash
 Copy code
@@ -57,7 +57,7 @@ class Settings:
         raise ValueError("TIMEOUT must be a positive integer")
 ```
 
-Generating Unit Tests with unitflo.ai
+## Generating Unit Tests with unitflo.ai
 1. Open the Project in VS Code
 bash
 Copy code
@@ -96,7 +96,7 @@ Execution Success Rate (ESR): 100.00%
 Final UFEM Score: 84.25%
 ```
 
-Project Components
+## Project Components
 1. Source Code Files (src/)
 data_processor.py: Handles complex data transformations and processes unknown data values.
 api_client.py: Manages API interactions and authentication.
@@ -125,7 +125,8 @@ Edge Cases: Defined in edge_cases/jira_edge_cases.json, containing scenarios the
 Code Embeddings: Stored in embeddings/code_embeddings.json, providing additional context for the LLM.
 6. Docker Support
 Dockerfile: Builds a Docker image to ensure consistent environments for running the evaluation.
-Testing
+
+## Testing
 Running the Test Suite
 ``` bash
 Copy code
@@ -136,7 +137,7 @@ This command will run all unit tests and display a test coverage report.
 Pre-Commit Hooks
 Pre-commit hooks are configured to enforce code quality checks using tools like flake8, black, and pylint.
 
-Code Quality
+## Code Quality
 Linters and Formatters
 The project uses:
 
@@ -145,7 +146,7 @@ black for code formatting.
 pylint for additional static code analysis.
 These are configured in the setup.cfg file and automatically enforced via pre-commit hooks.
 
-Continuous Integration
+## Continuous Integration
 The project includes a GitHub Actions workflow configured in .github/workflows/ci.yml. This workflow:
 
 Installs dependencies.
@@ -154,7 +155,7 @@ Executes the test suite.
 Runs the UFEM evaluation script.
 This ensures automated testing and code quality checks on each pull request or commit to the main branch.
 
-Docker Usage
+## Docker Usage
 To run the project inside a Docker container:
 
 bash
@@ -163,16 +164,16 @@ docker build -t unitflo-evaluation .
 docker run -it unitflo-evaluation
 This ensures consistency across environments, making it easier to run the evaluation on any machine.
 
-Contributing
+## Contributing
 We welcome contributions to the project! Please see CONTRIBUTING.md for guidelines on how to contribute.
 
-License
+## License
 This project is licensed under the MIT License. See the LICENSE file for details.
 
-Contact
+## Contact
 For questions or support, please contact the development team at support@unitflo.ai.
 
-Acknowledgments
+## Acknowledgments
 Special thanks to the contributors and open-source projects that made this project possible.
 
 Feel free to reach out if you need any assistance!
