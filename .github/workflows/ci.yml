@@ -33,17 +33,20 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt || { echo "Dependency installation failed."; exit 1; }
 
-    # 4. Ensure Git uses the GitHub Token for authentication
-    - name: Set up Git credentials for pre-commit
+    # 4. Set up custom Git credentials using GITHUB_TOKEN
+    - name: Set up custom Git credentials
       run: |
-        echo "Setting up Git credentials for pre-commit..."
-        git config --global credential.helper store
-        echo "https://${{ secrets.GITHUB_TOKEN }}:@github.com" > ~/.git-credentials
+        echo "Setting up custom Git credentials for pre-commit..."
+        git config --global credential.helper cache
         git config --global url."https://github.com/".insteadOf "git@github.com:"
         git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-        git config --list
+        
+        # Set up GIT_ASKPASS to pass the token during pre-commit
+        echo 'echo "${{ secrets.GITHUB_TOKEN }}"' > ~/git-askpass.sh
+        chmod +x ~/git-askpass.sh
+        git config --global core.askpass "~/git-askpass.sh"
 
-    # 5. Convert pre-commit to use HTTPS URLs if needed (optional if using HTTPS in .pre-commit-config.yaml)
+    # 5. Convert SSH to HTTPS in pre-commit-config.yaml (optional)
     - name: Convert SSH to HTTPS in pre-commit-config
       run: |
         sed -i 's/git@github.com:/https:\/\/github.com\//' .pre-commit-config.yaml
@@ -54,8 +57,10 @@ jobs:
         echo "Installing pre-commit hooks..."
         pre-commit install || { echo "Pre-commit installation failed."; exit 1; }
 
-    # 7. Run Pre-Commit Hooks with extra logging
+    # 7. Run Pre-Commit Hooks with debugging
     - name: Run Pre-Commit Hooks
+      env:
+        GIT_ASKPASS: ~/git-askpass.sh  # Ensure the askpass helper is used
       run: |
         echo "Running pre-commit hooks..."
         pre-commit run --all-files --show-diff-on-failure --verbose || { echo "Pre-commit hooks failed."; exit 1; }
