@@ -12,13 +12,17 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9]  # You can add other versions as necessary
+
     steps:
     - uses: actions/checkout@v2
 
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.8'
+        python-version: ${{ matrix.python-version }}
 
     - name: Install dependencies
       run: |
@@ -32,8 +36,14 @@ jobs:
 
     - name: Run Tests
       run: |
-        pytest tests/
+        pytest tests/ --disable-warnings
 
-    - name: Run Evaluation Script
+    - name: Run Coverage
       run: |
-        python evaluate_tests.py
+        coverage run -m pytest
+        coverage report
+
+    - name: Analyze Code Complexity (Radon)
+      run: |
+        radon cc src/ -s -n C  # Check cyclomatic complexity for grades A, B, C
+        radon mi src/  # Measure maintainability index
