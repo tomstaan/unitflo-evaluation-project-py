@@ -33,12 +33,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt || { echo "Dependency installation failed."; exit 1; }
 
-    # 4. Configure Git to use GITHUB_TOKEN for authentication in pre-commit
-    - name: Configure Git for GITHUB_TOKEN
+    # 4. Set Git credentials for pre-commit to authenticate via GITHUB_TOKEN
+    - name: Configure Git for pre-commit
       run: |
-        echo "Configuring Git to use GITHUB_TOKEN..."
-        git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+        echo "Setting up Git credentials for pre-commit..."
         git config --global credential.helper store
+        echo "https://${{ secrets.GITHUB_TOKEN }}:@github.com" > ~/.git-credentials
+        git config --global url."https://github.com/".insteadOf "git@github.com:"
+        git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
         git config --list
 
     # 5. Install Pre-Commit
