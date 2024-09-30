@@ -14,9 +14,9 @@ def normalize_data(df: pd.DataFrame) -> pd.DataFrame:
 
 def detect_outliers(df: pd.DataFrame) -> list:
     try:
-        z_scores = np.abs((df - df.mean()) / df.std())
+        z_scores = np.abs((df - df.mean()) / df.std(ddof=0))  # Use ddof=0 for population std deviation
         outliers = np.where(z_scores > 3)
-        return list(set(outliers[0]))
+        return list(set(outliers[0]))  # Return row indices with outliers
     except Exception as e:
         logger.error(f"Outlier detection failed: {e}")
         raise UtilityError(f"Outlier detection failed: {e}")

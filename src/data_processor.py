@@ -17,6 +17,11 @@ class DataProcessor:
     def process(self):
         try:
             data = self.source.fetch_data()
+            
+            # Ensure data is in correct format for DataFrame
+            if isinstance(data, dict) and all(isinstance(v, (int, float)) for v in data.values()):
+                data = {k: [v] for k, v in data.items()}  # Convert scalar values to lists
+            
             df = pd.DataFrame(data)
             validate_dataframe(df)
             df = normalize_data(df)
@@ -31,3 +36,4 @@ class DataProcessor:
             return df
         except Exception as e:
             raise DataProcessingError(f"Data processing failed: {e}")
+
