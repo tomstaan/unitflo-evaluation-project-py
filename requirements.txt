@@ -1,4 +1,4 @@
-pandas==2.2.3
+pandas==2.2.2
 numpy==1.26.0
 requests==2.32.3
 coverage==7.6.1
