@@ -1,4 +1,3 @@
-# src/services/service_b.py
 from src.exceptions import ServiceError
 import logging
 

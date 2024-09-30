@@ -1,8 +1,7 @@
-# src/model.py
 import importlib
 import numpy as np
 from src.exceptions import ModelError
-from utilities import preprocess_input
+from src.utilities import preprocess_input
 import logging
 
 logger = logging.getLogger(__name__)
