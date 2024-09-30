@@ -12,14 +12,26 @@ def normalize_data(df: pd.DataFrame) -> pd.DataFrame:
         logger.error(f"Data normalization failed: {e}")
         raise UtilityError(f"Data normalization failed: {e}")
 
-def detect_outliers(df: pd.DataFrame) -> list:
+def detect_outliers(df: pd.DataFrame, threshold: float = 3.0) -> list:
     try:
-        z_scores = np.abs((df - df.mean()) / df.std(ddof=0))  # Use ddof=0 for population std deviation
-        outliers = np.where(z_scores > 3)
-        return list(set(outliers[0]))  # Return row indices with outliers
+        # Calculate Z-scores column-wise
+        z_scores = np.abs((df - df.mean()) / df.std(ddof=0))
+        
+        # Log Z-scores for debugging (optional, remove once working)
+        logger.info(f"Z-scores: \n{z_scores}")
+        
+        # Detect rows where any Z-score exceeds the threshold, column-wise
+        outliers = np.where(z_scores > threshold)
+        
+        # Log detected outliers (optional, remove once working)
+        logger.info(f"Outliers detected at row indices: {outliers[0]}")
+        
+        # Return unique row indices where outliers are detected
+        return list(set(outliers[0]))
     except Exception as e:
         logger.error(f"Outlier detection failed: {e}")
         raise UtilityError(f"Outlier detection failed: {e}")
+
 
 def preprocess_input(input_data):
     try:
@@ -33,3 +45,4 @@ def preprocess_input(input_data):
     except Exception as e:
         logger.error(f"Input preprocessing failed: {e}")
         raise UtilityError(f"Input preprocessing failed: {e}")
+

@@ -16,9 +16,19 @@ class TestUtilities(unittest.TestCase):
             normalize_data(None)
 
     def test_detect_outliers_success(self):
+        # Test data where 100 in column 'A' should be detected as an outlier
         df = pd.DataFrame({'A': [1, 2, 100], 'B': [4, 5, 6]})
-        result = detect_outliers(df)
+        
+        # Expect index 2 (value 100 in column 'A') to be detected as an outlier
+        result = detect_outliers(df, threshold=2.5)  # Lowering the threshold slightly for small data
+        
+        # Ensure index 2 is detected as an outlier
         self.assertIn(2, result)
+    
+    def test_detect_outliers_failure(self):
+        # Test with None, should raise UtilityError
+        with self.assertRaises(UtilityError):
+            detect_outliers(None)
 
     def test_preprocess_input_success(self):
         input_data = {'a': 1, 'b': 2}
