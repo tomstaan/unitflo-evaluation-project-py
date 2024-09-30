@@ -11,5 +11,5 @@ radon==6.0.1
 openai==1.50.2
 hypothesis==6.112.2
 bandit==1.7.10
-pre-commit==3.8.0
+pre-commit==3.5.0
 GitPython==3.1.43
