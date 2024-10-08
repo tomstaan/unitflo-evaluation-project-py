@@ -2,14 +2,14 @@ import subprocess
 import json
 import os
 import logging
-from coverage import Coverage
-from flake8.api import legacy as flake8
-from utils.llm_utils import assess_semantic_correctness
 import yaml
 import sys
+from flake8.api import legacy as flake8
+from utils.llm_utils import assess_semantic_correctness
+import re
 
 # Setup logging
-logging.basicConfig(level=logging.DEBUG)  # Set to DEBUG to get more detailed logs
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Load evaluation configuration
@@ -18,46 +18,121 @@ with open('config_evaluation.yml', 'r') as f:
     config = yaml.safe_load(f)
 logger.info("Configuration loaded successfully.")
 
+
 def calculate_code_coverage():
     logger.info("Calculating Code Coverage Score (CCS)...")
     try:
-        cov = Coverage(source=['src'])
-        cov.start()
-        logger.debug("Running pytest with coverage collection...")
-        subprocess.run(['pytest', 'tests/', '--disable-warnings'], check=True)
-        cov.stop()
-        cov.save()
-        coverage_percentage = cov.report()
-        logger.info(f"Code Coverage Score (CCS): {coverage_percentage:.2f}%")
-        return coverage_percentage
+        # Run coverage erase to clear any previous data
+        subprocess.run(['coverage', 'erase'], check=True)
+
+        # Run tests with coverage
+        subprocess.run(['coverage', 'run', '--source=src', '-m', 'pytest', 'tests/', '--disable-warnings'], check=True)
+
+        # Generate coverage report
+        result = subprocess.run(['coverage', 'report'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+
+        # Parse the coverage percentage from the output
+        coverage_output = result.stdout
+        coverage_line = [line for line in coverage_output.split('\n') if 'TOTAL' in line]
+        if coverage_line:
+            coverage_percentage = float(coverage_line[0].split()[-1].replace('%', ''))
+            logger.info(f"Code Coverage Score (CCS): {coverage_percentage:.2f}%")
+            return coverage_percentage
+        else:
+            logger.error("Coverage percentage not found in output.")
+            return 0.0
     except subprocess.CalledProcessError as e:
-        logger.error(f"Pytest failed: {e}")
-        return 0
+        logger.error(f"Coverage calculation failed: {e.stderr}")
+        return 0.0
     except Exception as e:
         logger.error(f"An error occurred while calculating code coverage: {e}")
-        return 0
+        return 0.0
+
 
 def perform_mutation_testing():
     logger.info("Performing Mutation Testing for Test Correctness Score (TCS)...")
     try:
-        subprocess.run(['mutmut', 'run', '--paths-to-mutate=src/'], check=True)
-        result = subprocess.run(['mutmut', 'results', '--json'], capture_output=True, text=True, check=True)
-        mutmut_results = json.loads(result.stdout)
-        killed = mutmut_results.get('killed_mutants', 0)
-        survived = mutmut_results.get('surviving_mutants', 0)
+        # Generate fresh coverage data
+        logger.debug("Generating fresh coverage data...")
+        subprocess.run(['coverage', 'erase'], check=True)
+        subprocess.run(['coverage', 'run', '--source=src', '-m', 'pytest', 'tests/'], check=True)
+
+        # Run mutmut tests with --no-progress to suppress spinner output
+        command = [
+            'mutmut', 'run',
+            '--paths-to-mutate=src/',
+            '--runner=python -m pytest tests/',
+            '--use-coverage',
+            '--no-progress'  # Suppress spinner output
+        ]
+        logger.debug(f"Running command: {' '.join(command)}")
+        result_run = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        logger.debug(f"Mutmut run return code: {result_run.returncode}")
+        logger.debug(f"Mutmut run stdout:\n{result_run.stdout}")
+        logger.debug(f"Mutmut run stderr:\n{result_run.stderr}")
+
+        # Get mutation results without 'summary' argument
+        result = subprocess.run(
+            ['mutmut', 'results'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        logger.debug(f"Mutmut results return code: {result.returncode}")
+        logger.debug(f"Mutmut results stdout:\n{result.stdout}")
+        logger.debug(f"Mutmut results stderr:\n{result.stderr}")
+
+        if result.stdout.strip() == '':
+            logger.error("Mutmut did not return any results.")
+            # Check if .mutmut-cache file exists
+            if os.path.exists('.mutmut-cache'):
+                logger.debug(".mutmut-cache file exists.")
+            else:
+                logger.debug(".mutmut-cache file does not exist.")
+            return 0.0
+
+        # Parse the results output
+        # Initialize counters
+        killed = 0
+        survived = 0
+
+        lines = result.stdout.strip().split('\n')
+        for line in lines:
+            if line.startswith('Survived'):
+                survived += 1
+            elif line.startswith('Killed'):
+                killed += 1
+            # Handle other statuses if necessary
+
         total = killed + survived
-        TCS = (killed / total) * 100 if total > 0 else 0
+        if total == 0:
+            logger.error("No mutants were found.")
+            return 0.0
+
+        TCS = (killed / total) * 100.0
         logger.info(f"Test Correctness Score (TCS): {TCS:.2f}%")
+        logger.info(f"Mutant summary: {killed} killed, {survived} survived")
+
         return TCS
+
     except subprocess.CalledProcessError as e:
-        logger.error(f"Mutation testing failed: {e}")
-        return 0
-    except json.JSONDecodeError as e:
-        logger.error(f"JSONDecodeError in mutation testing: {e}")
-        return 0
+        logger.error(f"Mutation testing failed with return code {e.returncode}")
+        logger.error(f"Command output:\n{e.output}")
+        logger.error(f"Command stderr:\n{e.stderr}")
+        logger.error(f"Exception: {e}")
+        return 0.0
     except Exception as e:
         logger.error(f"An error occurred during mutation testing: {e}")
-        return 0
+        return 0.0
+
+
+
 
 def evaluate_edge_case_handling():
     logger.info("Evaluating Edge Case Handling Score (ECHS)...")
@@ -75,15 +150,16 @@ def evaluate_edge_case_handling():
             if is_covered:
                 covered += 1
 
-        ECHS = (covered / total_edge_cases) * 100 if total_edge_cases > 0 else 0
+        ECHS = (covered / total_edge_cases) * 100 if total_edge_cases > 0 else 0.0
         logger.info(f"Edge Case Handling Score (ECHS): {ECHS:.2f}%")
         return ECHS
     except FileNotFoundError as e:
         logger.error(f"Edge case file not found: {e}")
-        return 0
+        return 0.0
     except Exception as e:
         logger.error(f"An error occurred during edge case evaluation: {e}")
-        return 0
+        return 0.0
+
 
 def evaluate_test_quality():
     logger.info("Evaluating Test Quality Score (TQS)...")
@@ -92,48 +168,78 @@ def evaluate_test_quality():
         report = style_guide.check_files(['tests/'])
         total_issues_detected = report.total_errors
         max_allowable_issues = config['tqs']['max_allowable_issues']
-        TQS = max(0, 100 - ((total_issues_detected / max_allowable_issues) * 100))
+        TQS = max(0.0, 100.0 - ((total_issues_detected / max_allowable_issues) * 100.0))
         logger.info(f"Test Quality Score (TQS): {TQS:.2f}%")
         return TQS
     except Exception as e:
         logger.error(f"An error occurred during test quality evaluation: {e}")
-        return 0
+        return 0.0
+
 
 def evaluate_exception_handling():
     logger.info("Evaluating Exception Handling Score (EHS)...")
     try:
-        exceptions_properly_tested = assess_semantic_correctness('tests/', "Proper exception handling in tests")
         total_exceptions_in_code = config['ehs']['total_exceptions_in_code']
-        EHS = (exceptions_properly_tested / total_exceptions_in_code) * 100 if total_exceptions_in_code > 0 else 0
+        exceptions_properly_tested = 0
+
+        for exception_class in config['ehs']['exception_classes']:
+            description = f"Tests that '{exception_class}' is properly raised and handled."
+            is_tested = assess_semantic_correctness('tests/', description)
+            if is_tested:
+                exceptions_properly_tested += 1
+
+        EHS = (exceptions_properly_tested / total_exceptions_in_code) * 100.0 if total_exceptions_in_code > 0 else 0.0
         logger.info(f"Exception Handling Score (EHS): {EHS:.2f}%")
         return EHS
     except Exception as e:
         logger.error(f"An error occurred during exception handling evaluation: {e}")
-        return 0
+        return 0.0
+
 
 def evaluate_duplication():
     logger.info("Evaluating Duplication and Redundancy Score (DRS)...")
     try:
-        result = subprocess.run(['flake8', '--select=R', 'tests/'], capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            ['flake8', '--select=R', 'tests/'],
+            capture_output=True,
+            text=True,
+            check=False
+        )
         duplicate_code_blocks = len(result.stdout.strip().split('\n')) if result.stdout else 0
-        total_code_blocks = len(os.listdir('tests/'))
-        DRS = 100 - ((duplicate_code_blocks / total_code_blocks) * 100) if total_code_blocks > 0 else 100
+        total_code_blocks = len([file for file in os.listdir('tests/') if file.endswith('.py')])
+        DRS = 100.0 - ((duplicate_code_blocks / total_code_blocks) * 100.0) if total_code_blocks > 0 else 100.0
         logger.info(f"Duplication and Redundancy Score (DRS): {DRS:.2f}%")
         return DRS
     except Exception as e:
         logger.error(f"An error occurred during duplication evaluation: {e}")
-        return 0
+        return 0.0
+
 
 def evaluate_execution_success_rate():
     logger.info("Evaluating Execution Success Rate (ESR)...")
     try:
-        result = subprocess.run(['pytest', 'tests/', '--disable-warnings'], capture_output=True, text=True)
-        ESR = 100 if result.returncode == 0 else 0
+        # Run pytest with JSON report
+        result = subprocess.run(
+            ['pytest', 'tests/', '--disable-warnings', '--json-report', '--json-report-file=.report.json'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        # Parse the JSON report
+        with open('.report.json', 'r') as f:
+            report = json.load(f)
+
+        total_tests = report['summary']['total']
+        passed_tests = report['summary'].get('passed', 0)
+
+        ESR = (passed_tests / total_tests) * 100.0 if total_tests > 0 else 0.0
         logger.info(f"Execution Success Rate (ESR): {ESR:.2f}%")
         return ESR
     except Exception as e:
         logger.error(f"An error occurred during execution success rate evaluation: {e}")
-        return 0
+        return 0.0
+
 
 def generate_report(UFEM, component_scores):
     logger.info("Generating evaluation report...")
@@ -148,9 +254,10 @@ def generate_report(UFEM, component_scores):
     except Exception as e:
         logger.error(f"An error occurred while saving the report: {e}")
 
+
 def compute_ufem():
     logger.info("Starting UFEM evaluation...")
-    
+
     try:
         CCS = calculate_code_coverage()
         TCS = perform_mutation_testing()
@@ -160,6 +267,7 @@ def compute_ufem():
         DRS = evaluate_duplication()
         ESR = evaluate_execution_success_rate()
 
+        # Calculate UFEM using weights from the configuration
         UFEM = (
             (CCS * config['weights']['CCS']) +
             (TCS * config['weights']['TCS']) +
@@ -168,7 +276,7 @@ def compute_ufem():
             (EHS * config['weights']['EHS']) +
             (DRS * config['weights']['DRS']) +
             (ESR * config['weights']['ESR'])
-        )
+        ) / 100.0  # Normalize the score
 
         component_scores = {
             'CCS': CCS,
@@ -185,10 +293,11 @@ def compute_ufem():
             logger.info(f"{key}: {value:.2f}%")
 
         generate_report(UFEM, component_scores)
-    
+
     except Exception as e:
         logger.error(f"An error occurred during UFEM evaluation: {e}")
         sys.exit(1)
+
 
 if __name__ == '__main__':
     compute_ufem()

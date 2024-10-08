@@ -1,9 +1,10 @@
 # config_evaluation.yml
+
 weights:
-  CCS: 0.30
-  TCS: 0.25
-  ECHS: 0.20
-  TQS: 0.10
+  CCS: 0.35
+  TCS: 0.20
+  ECHS: 0.15
+  TQS: 0.15
   EHS: 0.05
   DRS: 0.05
   ESR: 0.05
@@ -16,4 +17,11 @@ tqs:
   max_allowable_issues: 100
 
 ehs:
-  total_exceptions_in_code: 5
+  total_exceptions_in_code: 6
+  exception_classes:
+    - DataProcessingError
+    - APIClientError
+    - ModelError
+    - UtilityError
+    - ServiceError
+    - ValidationError

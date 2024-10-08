@@ -1,11 +1,9 @@
-import openai
 import os
+import openai
 import logging
 from openai import OpenAI
-import os
 
 # Setup logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def initialize_openai_client():
@@ -40,8 +38,7 @@ def assess_semantic_correctness(test_directory, description):
             messages=[
                 {"role": "system", "content": "You are a software testing expert."},
                 {"role": "user", "content": prompt}
-            ],
-            max_tokens=50
+            ]
         )
         
         answer = response.choices[0].message.content.strip().lower()

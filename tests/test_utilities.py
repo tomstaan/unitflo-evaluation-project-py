@@ -1,5 +1,3 @@
-# tests/test_utilities.py
-
 import unittest
 import pandas as pd
 import numpy as np
@@ -11,7 +9,9 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class TestUtilities(unittest.TestCase):
+
     def test_normalize_data_success(self):
         df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
         result = normalize_data(df)
@@ -59,6 +59,7 @@ class TestUtilities(unittest.TestCase):
     def test_preprocess_input_failure(self):
         with self.assertRaises(UtilityError):
             preprocess_input(123)
+
 
 if __name__ == '__main__':
     unittest.main()
